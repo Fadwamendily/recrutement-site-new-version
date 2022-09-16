@@ -1,89 +1,84 @@
 
 const userModel = require('../models/userModel')
+const offreModel = require('../models/offerModel')
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 require('../passportConfig');
 require('dotenv').config();
 const ValidateRegister = require('../validation/registerValid')
 const ValidateLogin = require('../validation/loginValid')
-function signToken(userID) {
 
+function signToken(userID) {
     return jwt.sign({
         iss: 'moonServer',
         sub: userID
-    }, process.env.PRIVATE_KEY, { expiresIn: '1h' }) 
+    }, process.env.PRIVATE_KEY, { expiresIn: '1h' })
 
 }
 
 
-module.exports = { 
+module.exports = {
 
 
     register: (req, res) => {
         const { email, password, role } = req.body;
-        const { errors, isValid } = ValidateRegister(req.body);
-         
-        if (!isValid) {
-            res.status(404).json(errors);
-          } 
-        else{  userModel.findOne({ email }, function (err, user) {
 
-              if (err)
-
+        userModel.findOne({ email }, function (err, user) {
+            if (err)
                 return res.status(500).json({ msg: err.message, error: true })
-
-              if (user)
-
+            if (user)
                 return res.status(400).json({ msg: "User already exist", error: true })
-              else {
-                
+            else {
                 const newUser = new userModel(req.body)
-                    
-                 newUser.email= req.body.email,
-                 newUser.password= req.body.password,
-                 newUser.name= req.body.name,
-                 newUser.adress= req.body.adress,
-                 newUser.phoneNumber= req.body.phoneNumber,
-                 newUser.role= req.body.role,
- 
+
                 newUser.save((err, user) => {
-
                     if (err)
-
                         return res.status(500).json({ msg: err.message, error: true })
-                    else {  
+                    else {
+                        const token = signToken(user.id);
+                        //httpOnly prevents XSS (read in my authentication doc for more info)
+                        res.cookie("access_token", token, { maxAge: 3600 * 1000, httpOnly: true, sameSite: true });
 
                         return res.status(200).json({ isAuthenticated: true, user: { email, role }, error: false })
-                    } 
-                })}
+                    }
+                })
             }
-        )
-    }
+        })
+    },
+    login: (req, res) => {
+        const { _id, email, role } = req.user;
+        const token = signToken(_id);
+
+        res.cookie("access_token", token, { maxAge: 3600 * 1000, httpOnly: true, sameSite: true });
+
+        return res.status(200).json({ isAuthenticated: true, user: { email, role } })
     },
 
 
-
-     login: (req, res) => {
-       const {errors, isValid} = ValidateLogin(req.body)
-          if (!isValid){
-              res.status(404).json({msg: err.message, data: null, errors: true})
-          }else{
-             const { _id, email, role } = req.user;
-             const token = signToken(_id);
-
-            res.cookie("access_token", token, { maxAge: 3600 * 1000, httpOnly: true, sameSite: true });
-
-             return res.status(200).json({ isAuthenticated: true, user: { email, role } })
-            }
-        },
- 
-
-    logout: (req, res) => { 
+    logout: (req, res) => {
 
 
         res.clearCookie("access_token");
         return res.status(200).json({ success: true, user: { email: "", role: "" } })
-    }, 
+    },
+
+    protectedData: (req, res) => {
+        return res.status(200).json({ data: "Protected data...hehehe" })
+    },
+
+
+    AdminprotectedData: (req, res) => {
+        const { role } = req.user;
+        if (role === "admin")
+            return res.status(200).json({ data: "Admin Protected data...hehehe" })
+        return res.status(403).json({ data: "" })
+    },
+
+
+    authenticated: (req, res) => {
+        const { email, role,name, avatar , _id, errors, phoneNumber, adress} = req.user;
+        return res.status(200).json({ isAuthenticated: true, user: { email, role ,name, avatar, _id, errors, phoneNumber, adress } })
+    },
 
 
     getAllUsers: function (req, res) {
@@ -100,13 +95,10 @@ module.exports = {
 
     },
 
-
-
-
     getUserById: function (req, res) {
 
         userModel.findById({ _id: req.params.id })
-        
+
             .exec((err, user) => {
                 if (err) {
                     res.json({ message: 'error get one user' + err, data: null, status: 500 })
@@ -118,8 +110,6 @@ module.exports = {
                 }
             })
     },
-
-
 
     getUserbyRole: function (req, res) {
 
@@ -134,9 +124,10 @@ module.exports = {
 
 
     deleteUserById: function (req, res) {
-
+       
         userModel.findByIdAndDelete({ _id: req.params.id }, (err, User) => {
-
+            console.log('useeeeer Id ' , User._id)
+            //offreModel.findOneAndDelete({userId: this._id})
             if (err) { res.json({ message: 'error delete  one User' + err, data: null, status: 500 }) }
             else { res.json({ message: 'one User delete system', data: User, status: 200 }) }
 
@@ -145,40 +136,38 @@ module.exports = {
     },
 
 
-    uploadavatar: (req, res) => { 
+    uploadavatar: (req, res) => {
+        //let avatar= req.file.filename;
+        const data = {
+            avatar: req.file.filename, //  filename: Le nom du fichier dans le destination
+        };
+        console.log('fiiiiiiilllleee', req.file);
+        //console.log('params', req.params);
 
-    
-        
-            //let avatar= req.file.filename;
-            const avatar = {
-                avatar: req.file.filename,
-            };
-               console.log('fiiiiiiilllleee', req.file);
-               //console.log('params', req.params);
-    
-            if (req.file.mimetype === 'image/jpeg' || req.file.mimetype === 'image/png') {
-                userModel.findByIdAndUpdate({ _id: req.params.id }, avatar, (err, user) => {
-                    if (err) {
-                        res.status(500).json({ message: "avatar not uploaded" });
-                    } else {
-                        userModel.findById({ _id: user.id }, (err, user) => {
-                            if (err) {
-                                res.json("error");
-                            } else {
-                                res.status(200).json({
-                                    message: "user updated",
-                                    data: user,
-                                });
-                            }
-                        });
-                    }
-                }); 
-            } 
-            else {
-                res.json({ msg: 'please enter a valid extention' })
-            }
+        if (req.file.mimetype === 'image/jpeg' || req.file.mimetype === 'image/png') {
+            userModel.findByIdAndUpdate({ _id: req.params.id }, data, (err, user) => {
+                if (err) {
+                    res.status(500).json({ message: "avatar not uploaded" });
+                } else {
+                    userModel.findById({ _id: user.id }, (err, user) => {
+                        if (err) {
+                            res.json("error");
+                        } else {
+                            res.status(200).json({
+                                message: "user updated",
+                                data: user,
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        else {
+            res.json({ msg: 'please enter a valid extention' })
+        }
+    },
 
-        /*userModel.findByIdAndUpdate({ _id: req.params.id }, avatar,{ new: true }, (err, user) => {
+    /*userModel.findByIdAndUpdate({ _id: req.params.id }, avatar,{ new: true }, (err, user) => {
             if (err) {
                 res.status(500).json({ message: "avatar not uploaded" });
             } else {
@@ -198,8 +187,33 @@ module.exports = {
                 }});
             }
         });*/
-    },
-     
+
+    getme: (req, res) => {
+
+        userModel.findById({ _id: req.user._id }, (err, user) => {
+
+
+            if (err) {
+                res.status(500).json({
+                    message: 'no userdetails',
+                    data: null,
+
+                })
+                console.log('reqsuser', req.user)
+            } else {
+                res.status(200).json({
+                    message: 'userdetails',
+                    data: user,
+
+
+                })
+                console.log('reqsuser', req.user)
+            }
+        })
+    }
+
+    
+
 }
 
 

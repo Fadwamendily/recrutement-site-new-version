@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 const app = express();
 const port = 5000
@@ -9,44 +7,48 @@ const database = require('./config/bd')
 
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-app.use(cookieParser())    //<----- This middleware is needed to read Cookie from request. Without it, we'll get no req.cookie...
-app.use(express.json())    //<----- this middleware is needed to read JSON from request. Without it, we'll get req.body == undefined.
-app.use(express.urlencoded({extended: true}));
+app.use(cookieParser())    //<----- This middleware is needed to read Cookie from request. Without it, we'll get no req.cookie... // Ce middleware est nécessaire pour lire Cookie à partir de req. Sans elle, nous n’obtiendrons pas de req. cookie
+app.use(express.json())    //<----- this middleware is needed to read JSON from request. Without it, we'll get req.body == undefined. // ce middleware est nécessaire pour lire JSON à partir de req. Sans elle, nous obtiendrons req. body == indéfini
+app.use(express.urlencoded({ extended: true }));
 
-/*app.use(cors({
-    origin: "http://localhost:3000",
-    credentials: true
-}))*/
-   
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}))
+
 
 const userRouter = require('./routers/userRouter');
 const offreRouter = require('./routers/offreRouter');
 const cvRouter = require('./routers/cvRouter');
 const condidatRouter = require('./routers/condidatRouter');
 app.use("/users", userRouter);
-app.use("/offre", offreRouter); 
+app.use("/offre", offreRouter);
 app.use("/cv", cvRouter);
 app.use("/condidat", condidatRouter);
 
+app.get('/getfile/:avatar', function(req,res){
+  res.sendFile(__dirname + '/upload/' + req.params.avatar)//pour afficher limage:hezni lel dossier upload wafichili limage
+})
+
 
 app.get("/getfile/:cv", function (req, res) {
-  res.sendFile(__dirname + "/uploads/" + req.params.cv);
+  res.sendFile(__dirname + "/upload/" + req.params.cv);
 });
 
 
-app.use(function(req,res, next) {
-    let err = new Error();
-       err.status = 404;
-       next(err);
-   });
-   // handle errors
-   app.use(function(err, req, res, next) {
-    console.log(err);
-     if(err.status === 404) 
-      res.status(404).json({message: " Path Not found"});
-     else
-       res.status(500).json({message: "Something looks wrong "});
-   }); 
+app.use(function (req, res, next) {
+  let err = new Error();
+  err.status = 404;
+  next(err);
+});
+ // gérer les erreurs
+app.use(function (err, req, res, next) {
+  console.log(err);
+  if (err.status === 404)
+    res.status(404).json({ message: " Path Not found" });
+  else
+    res.status().json({ message: "Somethi500ng looks wrong " });
+});
 
 
 app.listen(port, console.log(`server is running at http//localhost:${port}`));

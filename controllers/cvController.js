@@ -20,6 +20,7 @@ module.exports = {
 
     createcv: function (req, res) {
         //productModel.create(req.body,function(err,product){
+            console.log('fileee cv', req.file)
         let cvv = req.file
         console.log('fiiiiiiilllleee', req.body);
         if (cvv.mimetype === 'application/pdf') {
@@ -31,7 +32,6 @@ module.exports = {
                 cv: cvv.filename
 
             },
-
                 function (err, user) {
 
                     if (err) {
@@ -49,7 +49,7 @@ module.exports = {
     },
 
 
-getAllcv: function (req, res) {
+    getAllcv: function (req, res) {
 
         cvModel.find({}).populate('userId').exec((err, cvs) => {
             if (err) {
@@ -78,6 +78,20 @@ getAllcv: function (req, res) {
             })
     },
 
+    getcvByUser: function (req, res) {
+        cvModel.find({ userId: req.params.userId }).populate('userId')
+            .exec((err, user) => {
+                if (err) {
+                    res.json({ message: 'error get one CV' + err, data: null, status: 500 })
+                }
+                else {
+                    res.json({ message: ' CV in system', data: user, status: 200 })
+
+
+                }
+            })
+    },
+
     deletecvById: function (req, res) {
         cvModel.findByIdAndDelete({ _id: req.params.id }, (err, cv) => {
 
@@ -86,8 +100,8 @@ getAllcv: function (req, res) {
         })
     },
     updatecvById: (req, res) => {
-        cvModel.findOneAndUpdate({ _id: req.params.id }, req.body, (err, cv) => {
-            if (!cv) {
+        cvModel.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true }, (err, cv) => {
+            if (err) {
                 res.status(500).json({
                     message: "cv not updated ",
                     data: null,
@@ -95,9 +109,20 @@ getAllcv: function (req, res) {
             } else {
                 res.status(200).json({
                     message: "cv updated successfuly ",
-                    data: req.body,
+                    data: cv,
                 });
             }
         });
     },
+
+      getCVBySearch : async (req, res) => {
+        const { searchQuery } = req.query;
+        try {
+          const skills = new RegExp(searchQuery, "i");
+          const CV = await cvModel.find({ skills });
+          res.json(CV);
+        } catch (error) {
+          res.status(404).json({ message: "Something went wrong" });
+        }
+      },
 }

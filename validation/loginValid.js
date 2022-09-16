@@ -9,18 +9,18 @@ module.exports = function ValidateLogin(data) {
   data.password = !isEmpty(data.password) ? data.password : "";
 
 
- 
+
   if (validator.isEmpty(data.email)) {
     errors.email = "Required email";
   }
   if (validator.isEmpty(data.password)) {
     errors.password = "Required password";
   }
- 
+
 
 
   return {
-      errors,
-      isValid: isEmpty(errors)
+    errors,
+    isValid: isEmpty(errors)
   }
 };

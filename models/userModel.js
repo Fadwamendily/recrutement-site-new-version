@@ -8,49 +8,57 @@ const UserSchema = new mongoose.Schema({
         type: String,
         trim: true,
         unique: true,
-        //required: true   
+        required: true   
     },
     password: {
         type: String,
-        //required: true 
-    }, 
-    
+        required: true 
+    },
+
     name: {
         type: String,
-        //required: true 
-    },
+        required: true ,
+        validate: {/*pour tester sur les caractére  regex*/
+        validator: function(name) {
+            return /^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$/.test(name);
+          },
     
+          message: props /* propse el message eli bech yeketbo*/ => `${props.value} is not a correctname`
+         },
+    },
+
     adress: {
         type: String,
-        //required: true
+        required: true
     },
-    role: {  
+    role: {
         type: String,
-        enum: ["client","freelancer","ESN"],
-        //required: true
+        enum: ["client", "freelancer", "ESN", "admin"],
+        required: true
     },
     phoneNumber: {
         type: Number,
-        //required: true 
-      
-    },  
+        required: true 
+
+    },
     avatar: {
         type: String,
-        default: 'useravatar.png'
-       
-    } 
+        default: '1648916965896-pg.jpg'
 
-}) 
+    }
+   
+
+})
 
 //Presave middleware - NOTE: if use arrow function, this becomes empty object, and we can't use isModified()
-UserSchema.pre("save", function(next) {
+UserSchema.pre("save", function (next) {
     //If there's no change to password field (no change, no add new), call next()
-    if(!this.isModified('password')){
+    if (!this.isModified('password')) {
         next()
     }
- 
+
     bcrypt.hash(this.password, 10, (err, hashedPassword) => {
-        if(err)
+        if (err)
             return next(err)
         this.password = hashedPassword;
         return next()
@@ -61,14 +69,14 @@ UserSchema.pre("save", function(next) {
 
 UserSchema.methods.comparePassword = function (password, cb) {
     bcrypt.compare(password, this.password, (err, isMatch) => {
-        if(err)
+        if (err)
             return cb(err)
-        if(!isMatch)
+        if (!isMatch)
             return cb(null, false)
         return cb(null, this)
     })
 }
- 
-UserSchema.plugin(uniqueValidator);  
+
+UserSchema.plugin(uniqueValidator);
 
 module.exports = mongoose.model("User", UserSchema);
